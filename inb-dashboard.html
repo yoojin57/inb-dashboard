@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>이너부스 콘텐츠 대시보드</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root {
+    --bg: #f7f6f3;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --border: rgba(0,0,0,0.08);
+    --border-strong: rgba(0,0,0,0.14);
+    --text: #0d0d0d;
+    --text-sec: #52514e;
+    --text-muted: #8a8880;
+    --blue: #2a78d6;
+    --aqua: #1baf7a;
+    --amber: #eda100;
+    --violet: #4a3aa7;
+    --red: #e34948;
+    --radius: 8px;
+    --grid: rgba(140,138,130,0.15);
+    --tick: #898781;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* LOGIN */
+  #login-screen {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center; background: var(--bg);
+  }
+  .login-box {
+    background: var(--surface); border-radius: 16px; border: 0.5px solid var(--border-strong);
+    padding: 2.5rem 2rem; width: 340px; text-align: center;
+  }
+  .login-logo { font-size: 22px; font-weight: 600; color: var(--text); margin-bottom: 6px; letter-spacing: -0.5px; }
+  .login-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 2rem; }
+  .login-input {
+    width: 100%; padding: 12px 16px; border-radius: var(--radius); border: 0.5px solid var(--border-strong);
+    background: var(--bg); font-size: 18px; letter-spacing: 6px; text-align: center;
+    color: var(--text); outline: none; margin-bottom: 12px;
+  }
+  .login-input:focus { border-color: var(--blue); }
+  .login-btn {
+    width: 100%; padding: 12px; border-radius: var(--radius); border: none;
+    background: var(--blue); color: #fff; font-size: 14px; font-weight: 500; cursor: pointer;
+  }
+  .login-btn:hover { background: #1e68c4; }
+  .login-err { font-size: 12px; color: var(--red); margin-top: 10px; min-height: 18px; }
+
+  /* LAYOUT */
+  #app { display: none; }
+  .header {
+    background: var(--surface); border-bottom: 0.5px solid var(--border-strong);
+    padding: 0 2rem; display: flex; align-items: center; gap: 1rem; height: 56px; position: sticky; top: 0; z-index: 100;
+  }
+  .header-logo { font-size: 15px; font-weight: 600; color: var(--text); letter-spacing: -0.3px; }
+  .header-brand { font-size: 12px; color: var(--text-muted); background: var(--surface2); padding: 3px 10px; border-radius: 999px; border: 0.5px solid var(--border); }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .logout-btn { font-size: 12px; color: var(--text-muted); background: transparent; border: 0.5px solid var(--border-strong); padding: 5px 12px; border-radius: var(--radius); cursor: pointer; }
+  .logout-btn:hover { color: var(--text); }
+
+  .main { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1.5rem 4rem; }
+
+  /* NAV */
+  .top-nav { display: flex; gap: 6px; margin-bottom: 1.5rem; flex-wrap: wrap; align-items: center; }
+  .tab-btn { padding: 7px 16px; border-radius: var(--radius); border: 0.5px solid var(--border-strong); background: transparent; color: var(--text-sec); font-size: 13px; cursor: pointer; }
+  .tab-btn.active { background: var(--surface); color: var(--text); border-color: var(--border-strong); font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,0.07); }
+  .sel { margin-left: auto; font-size: 13px; color: var(--text-sec); padding: 6px 10px; border-radius: var(--radius); border: 0.5px solid var(--border-strong); background: var(--surface); cursor: pointer; }
+
+  /* SECTIONS */
+  .sec { font-size: 11px; color: var(--text-muted); font-weight: 600; letter-spacing: .07em; text-transform: uppercase; margin: 1.75rem 0 .75rem; }
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 1rem; }
+  .kpi { background: var(--surface); border-radius: var(--radius); padding: .9rem 1rem; border: 0.5px solid var(--border); }
+  .kpi-label { font-size: 11px; color: var(--text-muted); margin-bottom: 5px; }
+  .kpi-value { font-size: 20px; font-weight: 600; color: var(--text); }
+  .kpi-sub { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+  .up { color: #1baf7a; } .dn { color: #e34948; }
+
+  .chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 1rem; }
+  .card { background: var(--surface); border-radius: 12px; padding: 1.1rem 1.25rem; border: 0.5px solid var(--border); }
+  .card-title { font-size: 13px; font-weight: 500; color: var(--text-sec); margin-bottom: .85rem; }
+  .chart-wrap { position: relative; width: 100%; }
+
+  /* UTM */
+  .utm-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 0.5px solid var(--border); }
+  .utm-row:last-child { border-bottom: none; }
+  .utm-src { font-size: 12px; font-weight: 500; color: var(--text); min-width: 150px; font-family: 'SF Mono', monospace; }
+  .utm-bar-wrap { flex: 1; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .utm-bar-fill { height: 100%; border-radius: 3px; background: var(--blue); }
+  .utm-sess { font-size: 11px; color: var(--text-sec); min-width: 52px; text-align: right; }
+  .utm-pct { font-size: 11px; color: var(--text-muted); min-width: 34px; text-align: right; }
+
+  /* TABLE */
+  .tbl { width: 100%; font-size: 12px; border-collapse: collapse; }
+  .tbl th { color: var(--text-muted); font-weight: 500; text-align: left; padding: 7px 10px; border-bottom: 0.5px solid var(--border); white-space: nowrap; }
+  .tbl td { padding: 8px 10px; border-bottom: 0.5px solid var(--border); color: var(--text); vertical-align: top; }
+  .tbl tr:last-child td { border-bottom: none; }
+  .tbl tr:hover td { background: var(--surface2); }
+  .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 500; }
+  .b-up { background: #e1f5ee; color: #0a5e47; }
+  .b-dn { background: #fdeaea; color: #7a1f1f; }
+  .kw-list { display: flex; flex-wrap: wrap; gap: 3px; }
+  .kw { font-size: 10px; background: var(--surface2); color: var(--text-sec); padding: 2px 7px; border-radius: 4px; border: 0.5px solid var(--border); }
+
+  .more-btn { display: block; width: 100%; text-align: center; padding: 9px; font-size: 12px; color: var(--blue); background: transparent; border: 0.5px solid var(--border-strong); border-radius: var(--radius); cursor: pointer; margin-top: 10px; }
+  .more-btn:hover { background: var(--surface2); }
+  .hidden { display: none; }
+
+  /* IG */
+  .type-legend { display: flex; gap: 14px; margin-bottom: 8px; flex-wrap: wrap; }
+  .type-legend-item { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-sec); }
+  .tl-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+  .top5-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem; }
+  .top5-card { background: var(--surface2); border-radius: 10px; border: 0.5px solid var(--border); padding: .9rem 1rem; display: flex; gap: 10px; align-items: flex-start; }
+  .top5-rank { font-size: 20px; font-weight: 600; color: var(--text-muted); min-width: 24px; }
+  .top5-title { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 5px; line-height: 1.4; }
+  .top5-metrics { display: flex; flex-wrap: wrap; gap: 6px; }
+  .top5-metric { font-size: 11px; color: var(--text-sec); }
+
+  .ig-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 10px; }
+  .ig-post { background: var(--surface2); border-radius: 10px; border: 0.5px solid var(--border); padding: .85rem; }
+  .ig-emoji { font-size: 24px; margin-bottom: 6px; }
+  .ig-type-label { font-size: 10px; color: var(--text-muted); margin-bottom: 2px; }
+  .ig-title { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 7px; line-height: 1.4; }
+  .ig-stat { font-size: 11px; color: var(--text-sec); margin-bottom: 2px; }
+
+  /* REPORT */
+  .report-card { background: var(--surface); border-radius: 12px; padding: 1.25rem 1.5rem; border: 0.5px solid var(--border); margin-bottom: 1rem; }
+  .report-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 1rem; }
+  .report-item { font-size: 13px; color: var(--text-sec); padding: 7px 0; border-bottom: 0.5px solid var(--border); line-height: 1.6; }
+  .report-item:last-child { border-bottom: none; }
+  .action-item { font-size: 13px; color: var(--text); padding: 10px 14px; background: var(--surface2); border-radius: var(--radius); border-left: 3px solid var(--blue); margin-bottom: 8px; line-height: 1.6; }
+  .ai-loading { font-size: 13px; color: var(--text-muted); padding: 1.5rem; text-align: center; }
+
+  .page-section { display: none; }
+  .page-section.active { display: block; }
+
+  @media (max-width: 640px) {
+    .chart-grid { grid-template-columns: 1fr; }
+    .top5-grid { grid-template-columns: 1fr; }
+    .header { padding: 0 1rem; }
+    .main { padding: 1rem 1rem 4rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">이너부스</div>
+    <div class="login-sub">콘텐츠 성과 대시보드</div>
+    <input class="login-input" type="password" id="pw-input" maxlength="6" placeholder="••••••" onkeydown="if(event.key==='Enter')tryLogin()">
+    <button class="login-btn" onclick="tryLogin()">입장하기</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="header">
+    <div class="header-logo">이너부스 대시보드</div>
+    <div class="header-brand">INNOBOOSE</div>
+    <div class="header-right">
+      <button class="logout-btn" onclick="logout()">로그아웃</button>
+    </div>
+  </div>
+  <div class="main">
+
+    <div class="top-nav">
+      <button class="tab-btn active" onclick="setMode('daily',this)">일별</button>
+      <button class="tab-btn" onclick="setMode('weekly',this)">주별</button>
+      <button class="tab-btn" onclick="setMode('monthly',this)">월별</button>
+      <button class="tab-btn" onclick="setMode('report',this)">월별 리포트</button>
+      <select class="sel" id="period-sel" onchange="render()"></select>
+    </div>
+
+    <!-- MAIN PAGE -->
+    <div id="page-main" class="page-section active">
+
+      <p class="sec">홈페이지 유입 & 전환</p>
+      <div class="kpi-row" id="hp-kpis"></div>
+      <div class="chart-grid">
+        <div class="card">
+          <div class="card-title">활성 사용자 추이</div>
+          <div class="chart-wrap" style="height:175px"><canvas id="c-active" role="img" aria-label="활성 사용자 추이"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">전환 유형별</div>
+          <div class="chart-wrap" style="height:175px"><canvas id="c-conv" role="img" aria-label="전환 유형별 수치"></canvas></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-title">UTM 유입 경로</div>
+        <div id="utm-rows"></div>
+      </div>
+
+      <p class="sec">블로그 콘텐츠 상세 (TOP 10)</p>
+      <div class="card" style="margin-bottom:1rem">
+        <div style="overflow-x:auto">
+          <table class="tbl">
+            <thead><tr>
+              <th style="min-width:150px">콘텐츠</th>
+              <th>조회수</th>
+              <th style="min-width:140px">주요 유입 키워드</th>
+              <th style="min-width:170px">검색별 유입</th>
+              <th>증감</th>
+            </tr></thead>
+            <tbody id="blog-top10"></tbody>
+          </table>
+        </div>
+        <button class="more-btn" id="more-btn" onclick="toggleMore()">+ 더 보기</button>
+        <div id="blog-more" class="hidden" style="overflow-x:auto;margin-top:8px">
+          <table class="tbl">
+            <thead><tr>
+              <th style="min-width:150px">콘텐츠</th>
+              <th>조회수</th>
+              <th style="min-width:140px">주요 유입 키워드</th>
+              <th style="min-width:170px">검색별 유입</th>
+              <th>증감</th>
+            </tr></thead>
+            <tbody id="blog-rest"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <p class="sec">인스타그램 성과</p>
+      <div class="kpi-row" id="ig-kpis"></div>
+      <div class="chart-grid">
+        <div class="card">
+          <div class="card-title">팔로워 수 추이</div>
+          <div class="chart-wrap" style="height:175px"><canvas id="c-follow" role="img" aria-label="팔로워 수 추이"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-title">콘텐츠 유형별 (도달 · 참여 · 공유)</div>
+          <div class="type-legend">
+            <div class="type-legend-item"><div class="tl-dot" style="background:#2a78d6"></div>도달</div>
+            <div class="type-legend-item"><div class="tl-dot" style="background:#1baf7a"></div>참여</div>
+            <div class="type-legend-item"><div class="tl-dot" style="background:#eda100"></div>공유</div>
+          </div>
+          <div class="chart-wrap" style="height:150px"><canvas id="c-ig-type" role="img" aria-label="콘텐츠 유형별 도달 참여 공유"></canvas></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-title" id="top5-title">이번 달 성과 TOP 5</div>
+        <div class="top5-grid" id="top5-posts"></div>
+      </div>
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card-title" id="ig-period-title">업로드된 콘텐츠</div>
+        <div class="ig-grid" id="ig-posts"></div>
+      </div>
+
+    </div>
+
+    <!-- REPORT PAGE -->
+    <div id="page-report" class="page-section">
+      <div class="report-card">
+        <div class="report-title" id="report-heading">6월 콘텐츠 종합 분석</div>
+        <div id="report-analysis"><div class="ai-loading">분석 생성 중...</div></div>
+      </div>
+      <div class="report-card">
+        <div class="report-title">7월 액션 아이템 제안</div>
+        <div id="report-actions"><div class="ai-loading">액션 아이템 생성 중...</div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── 비밀번호 ──────────────────────────────────────────
+const PASSWORD = '220516';
+// ─────────────────────────────────────────────────────
+
+function tryLogin() {
+  const v = document.getElementById('pw-input').value;
+  if (v === PASSWORD) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    sessionStorage.setItem('ib_auth', '1');
+    render();
+  } else {
+    document.getElementById('login-err').textContent = '비밀번호가 맞지 않아요.';
+    document.getElementById('pw-input').value = '';
+  }
+}
+function logout() {
+  sessionStorage.removeItem('ib_auth');
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('pw-input').value = '';
+  document.getElementById('login-err').textContent = '';
+}
+if (sessionStorage.getItem('ib_auth') === '1') {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+}
+
+// ── 데이터 ───────────────────────────────────────────
+const BLOG_ALL = [
+  {t:'캐릭터 IP 라이선스 계약 가이드',v:1842,kw:[{k:'캐릭터 라이선스',p:38},{k:'IP 계약 방법',p:27},{k:'라이선스 비용',p:18}],src:[{s:'네이버 통합검색 PC',p:42},{s:'네이버 통합검색 MO',p:31},{s:'구글 검색 PC',p:16},{s:'이미지 검색 MO',p:11}],d:'+24%',up:true},
+  {t:'팝업스토어 트렌드 2025',v:1204,kw:[{k:'팝업스토어 트렌드',p:44},{k:'2025 팝업',p:33},{k:'팝업 기획',p:23}],src:[{s:'네이버 통합검색 MO',p:48},{s:'네이버 통합검색 PC',p:29},{s:'SNS 유입',p:14},{s:'기타',p:9}],d:'+18%',up:true},
+  {t:'굿즈 협업 성공 사례',v:987,kw:[{k:'굿즈 협업',p:51},{k:'IP 굿즈 사례',p:31},{k:'캐릭터 협업',p:18}],src:[{s:'네이버 통합검색 PC',p:38},{s:'인스타그램',p:26},{s:'네이버 블로그',p:21},{s:'기타',p:15}],d:'+9%',up:true},
+  {t:'IP홀더 포트폴리오 작성법',v:743,kw:[{k:'IP홀더 포트폴리오',p:46},{k:'캐릭터 작가',p:34},{k:'IP 등록',p:20}],src:[{s:'네이버 통합검색 PC',p:52},{s:'네이버 통합검색 MO',p:31},{s:'구글 검색',p:17}],d:'-4%',up:false},
+  {t:'저작권 기초 완전 정리',v:612,kw:[{k:'저작권 기초',p:55},{k:'저작권법 요약',p:28},{k:'저작권 등록',p:17}],src:[{s:'네이버 통합검색 PC',p:61},{s:'네이버 통합검색 MO',p:24},{s:'구글 검색 PC',p:15}],d:'+7%',up:true},
+  {t:'캐릭터 상품화 절차 안내',v:498,kw:[{k:'캐릭터 상품화',p:48},{k:'굿즈 제작 절차',p:33},{k:'IP 상품화',p:19}],src:[{s:'네이버 통합검색 MO',p:44},{s:'네이버 통합검색 PC',p:36},{s:'기타',p:20}],d:'+2%',up:true},
+  {t:'브랜드 파트너 선정 기준',v:384,kw:[{k:'브랜드 파트너',p:42},{k:'IP 협업 기준',p:38},{k:'캐릭터 협업 비용',p:20}],src:[{s:'네이버 통합검색 PC',p:45},{s:'SNS 유입',p:30},{s:'직접 유입',p:25}],d:'+14%',up:true},
+  {t:'캐릭터 IP 가치 산정법',v:271,kw:[{k:'IP 가치 평가',p:50},{k:'캐릭터 가치',p:33},{k:'IP 산정',p:17}],src:[{s:'구글 검색 PC',p:41},{s:'네이버 통합검색 PC',p:38},{s:'기타',p:21}],d:'+31%',up:true},
+  {t:'굿즈 소량 제작 업체 비교',v:198,kw:[{k:'굿즈 소량',p:52},{k:'캐릭터 굿즈 제작',p:30},{k:'소량 인쇄',p:18}],src:[{s:'네이버 통합검색 MO',p:56},{s:'네이버 통합검색 PC',p:28},{s:'이미지 검색 MO',p:16}],d:'+8%',up:true},
+  {t:'IP 계약서 주요 조항 해설',v:154,kw:[{k:'IP 계약서',p:58},{k:'저작권 계약',p:27},{k:'라이선스 조항',p:15}],src:[{s:'네이버 통합검색 PC',p:49},{s:'구글 검색 PC',p:31},{s:'직접 유입',p:20}],d:'+5%',up:true},
+  {t:'팝업스토어 운영 체크리스트',v:121,kw:[{k:'팝업스토어 운영',p:47},{k:'팝업 체크리스트',p:36},{k:'팝업 준비',p:17}],src:[{s:'네이버 통합검색 MO',p:51},{s:'SNS 유입',p:29},{s:'기타',p:20}],d:'+3%',up:true},
+  {t:'캐릭터 작가 수익화 방법',v:98,kw:[{k:'캐릭터 작가',p:54},{k:'IP 수익화',p:31},{k:'굿즈 판매',p:15}],src:[{s:'네이버 통합검색 MO',p:60},{s:'인스타그램',p:25},{s:'기타',p:15}],d:'+19%',up:true},
+];
+
+const DATA = {
+  daily: {
+    hp:{sessions:312,active:184,time:'4분 12초',signup:3,inquiry:1,register:0},
+    activeTrend:{labels:['09시','12시','15시','18시','21시'],data:[28,74,56,62,41]},
+    conv:{labels:['회원가입','캐릭터 문의','캐릭터 등록'],data:[3,1,0]},
+    utm:[{src:'naver/blog',sess:94,pct:51},{src:'ilc/magazine',sess:41,pct:22},{src:'ig/social',sess:28,pct:15},{src:'ilc/newsletter',sess:19,pct:10},{src:'google/cpc',sess:4,pct:2}],
+    ig:{followers:8412,reach:1240,engage:'4.1%',shares:32,delta:'+5명'},
+    followTrend:{labels:['09시','12시','15시','18시','21시'],data:[8400,8403,8406,8409,8412]},
+    igTypeSeries:{labels:['릴스','카드뉴스','단일이미지','스토리'],reach:[3200,1840,1120,920],engage:[287,124,84,0],share:[93,47,31,0]},
+    igPosts:[
+      {emoji:'🎬',type:'릴스',title:'캐릭터 등록 절차 30초 요약',period:'오늘',reach:3210,likes:287,shares:93,engage:'6.1%'},
+      {emoji:'🎨',type:'카드뉴스',title:'IP 라이선스 계약 시 꼭 확인할 5가지',period:'오늘',reach:1840,likes:124,shares:47,engage:'4.2%'},
+    ],
+    top5:[
+      {emoji:'🎬',type:'릴스',title:'캐릭터 등록 절차 30초 요약',reach:3210,engage:287,shares:93,follow:12},
+      {emoji:'🎨',type:'카드뉴스',title:'팝업스토어 현장 스케치',reach:4820,engage:412,shares:134,follow:18},
+      {emoji:'🎨',type:'카드뉴스',title:'IP 라이선스 계약 시 꼭 확인할 5가지',reach:2140,engage:178,shares:82,follow:9},
+      {emoji:'🖼️',type:'단일이미지',title:'IP홀더라면 알아야 할 계약 조건',reach:1980,engage:156,shares:64,follow:7},
+      {emoji:'📱',type:'스토리',title:'이너부스와 함께한 브랜드 파트너 후기',reach:1120,engage:84,shares:31,follow:4},
+    ]
+  },
+  weekly: {
+    hp:{sessions:2184,active:1302,time:'4분 28초',signup:21,inquiry:8,register:3},
+    activeTrend:{labels:['월','화','수','목','금','토','일'],data:[162,221,198,284,247,118,72]},
+    conv:{labels:['회원가입','캐릭터 문의','캐릭터 등록'],data:[21,8,3]},
+    utm:[{src:'naver/blog',sess:682,pct:52},{src:'ilc/magazine',sess:284,pct:22},{src:'ig/social',sess:196,pct:15},{src:'ilc/newsletter',sess:131,pct:10},{src:'google/cpc',sess:13,pct:1}],
+    ig:{followers:8412,reach:8740,engage:'3.8%',shares:218,delta:'+38명'},
+    followTrend:{labels:['월','화','수','목','금','토','일'],data:[8374,8381,8388,8394,8401,8407,8412]},
+    igTypeSeries:{labels:['릴스','카드뉴스','단일이미지','스토리'],reach:[6800,4200,2800,1400],engage:[580,310,190,0],share:[178,92,54,0]},
+    igPosts:[
+      {emoji:'🎬',type:'릴스',title:'캐릭터 등록 절차 30초 요약',period:'W26',reach:3210,likes:287,shares:93,engage:'6.1%'},
+      {emoji:'🎨',type:'카드뉴스',title:'IP 라이선스 계약 시 꼭 확인할 5가지',period:'W26',reach:1840,likes:124,shares:47,engage:'4.2%'},
+      {emoji:'🖼️',type:'단일이미지',title:'브랜드 파트너 후기',period:'W26',reach:1120,likes:84,shares:31,engage:'2.9%'},
+      {emoji:'📱',type:'스토리',title:'Q&A: 자주 묻는 질문',period:'W26',reach:920,likes:0,shares:0,engage:'1.8%'},
+    ],
+    top5:[
+      {emoji:'🎬',type:'릴스',title:'캐릭터 등록 절차 30초 요약',reach:3210,engage:287,shares:93,follow:12},
+      {emoji:'🎨',type:'카드뉴스',title:'팝업스토어 현장 스케치',reach:4820,engage:412,shares:134,follow:18},
+      {emoji:'🎨',type:'카드뉴스',title:'IP 라이선스 계약 시 꼭 확인할 5가지',reach:2140,engage:178,shares:82,follow:9},
+      {emoji:'🖼️',type:'단일이미지',title:'IP홀더라면 알아야 할 계약 조건',reach:1980,engage:156,shares:64,follow:7},
+      {emoji:'📱',type:'스토리',title:'이너부스와 함께한 브랜드 파트너 후기',reach:1120,engage:84,shares:31,follow:4},
+    ]
+  },
+  monthly: {
+    hp:{sessions:9840,active:5820,time:'4분 51초',signup:89,inquiry:34,register:12},
+    activeTrend:{labels:['1주','2주','3주','4주'],data:[1280,1540,1620,1380]},
+    conv:{labels:['회원가입','캐릭터 문의','캐릭터 등록'],data:[89,34,12]},
+    utm:[{src:'naver/blog',sess:3218,pct:55},{src:'ilc/magazine',sess:1180,pct:20},{src:'ig/social',sess:812,pct:14},{src:'ilc/newsletter',sess:524,pct:9},{src:'google/cpc',sess:66,pct:1},{src:'direct',sess:40,pct:1}],
+    ig:{followers:8412,reach:31200,engage:'3.8%',shares:847,delta:'+142명'},
+    followTrend:{labels:['1주','2주','3주','4주'],data:[8270,8312,8368,8412]},
+    igTypeSeries:{labels:['릴스','카드뉴스','단일이미지','스토리'],reach:[72000,48000,31000,16000],engage:[5820,3140,1980,0],share:[1740,924,542,0]},
+    igPosts:[
+      {emoji:'🎬',type:'릴스',title:'팝업스토어 현장 스케치 영상',period:'6월',reach:4820,likes:412,shares:134,engage:'7.3%'},
+      {emoji:'🎨',type:'카드뉴스',title:'IP 라이선스 계약 시 꼭 확인할 5가지',period:'6월',reach:1840,likes:124,shares:47,engage:'4.2%'},
+      {emoji:'🎬',type:'릴스',title:'캐릭터 등록 절차 30초 요약',period:'6월',reach:3210,likes:287,shares:93,engage:'6.1%'},
+      {emoji:'🎨',type:'카드뉴스',title:'IP홀더라면 알아야 할 계약 조건 총정리',period:'6월',reach:2140,likes:178,shares:82,engage:'5.1%'},
+      {emoji:'🖼️',type:'단일이미지',title:'브랜드 파트너 후기',period:'6월',reach:1120,likes:84,shares:31,engage:'2.9%'},
+      {emoji:'🖼️',type:'단일이미지',title:'6월 이너부스 이벤트 안내',period:'6월',reach:980,likes:62,shares:18,engage:'2.1%'},
+      {emoji:'📱',type:'스토리',title:'Q&A: 자주 묻는 질문',period:'6월',reach:920,likes:0,shares:0,engage:'1.8%'},
+    ],
+    top5:[
+      {emoji:'🎬',type:'릴스',title:'팝업스토어 현장 스케치 영상',reach:4820,engage:412,shares:134,follow:18},
+      {emoji:'🎬',type:'릴스',title:'캐릭터 등록 절차 30초 요약',reach:3210,engage:287,shares:93,follow:12},
+      {emoji:'🎨',type:'카드뉴스',title:'IP홀더라면 알아야 할 계약 조건 총정리',reach:2140,engage:178,shares:82,follow:9},
+      {emoji:'🖼️',type:'단일이미지',title:'IP 라이선스 계약 시 꼭 확인할 5가지',reach:1980,engage:156,shares:64,follow:7},
+      {emoji:'📱',type:'스토리',title:'이너부스와 함께한 브랜드 파트너 후기',reach:1120,engage:84,shares:31,follow:4},
+    ]
+  }
+};
+
+const PERIODS = {
+  daily:['2025-06-29 (오늘)','2025-06-28','2025-06-27','2025-06-26'],
+  weekly:['2025 W26 (이번 주)','2025 W25','2025 W24','2025 W23'],
+  monthly:['2025년 6월','2025년 5월','2025년 4월','2025년 3월'],
+  report:['2025년 6월 리포트','2025년 5월 리포트']
+};
+
+let mode = 'daily', charts = {}, moreOpen = false;
+const C = { blue:'#2a78d6', aqua:'#1baf7a', amber:'#eda100', violet:'#4a3aa7' };
+
+function n(v){ return typeof v==='number' ? v.toLocaleString() : v; }
+
+function toggleMore(){
+  moreOpen = !moreOpen;
+  document.getElementById('blog-more').classList.toggle('hidden', !moreOpen);
+  document.getElementById('more-btn').textContent = moreOpen ? '- 접기' : '+ 더 보기';
+}
+
+function blogRow(r){
+  return `<tr>
+    <td style="font-weight:500">${r.t}</td>
+    <td>${n(r.v)}</td>
+    <td><div class="kw-list">${r.kw.map(k=>`<span class="kw">${k.k} ${k.p}%</span>`).join('')}</div></td>
+    <td><div style="display:flex;flex-direction:column;gap:3px">${r.src.map(s=>`<div style="font-size:11px;color:var(--text-sec)">${s.s} <span style="font-weight:500;color:var(--text)">${s.p}%</span></div>`).join('')}</div></td>
+    <td><span class="badge ${r.up?'b-up':'b-dn'}">${r.d}</span></td>
+  </tr>`;
+}
+
+function destroyAll(){ Object.values(charts).forEach(c=>c.destroy()); charts={}; }
+
+function baseOpts(){
+  return { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+    scales:{ x:{grid:{color:'transparent'},ticks:{color:'#898781',font:{size:11}}}, y:{grid:{color:'rgba(140,138,130,0.15)'},ticks:{color:'#898781',font:{size:11}}} } };
+}
+
+function render(){
+  if(mode==='report'){ renderReport(); return; }
+  const d = DATA[mode];
+  document.getElementById('page-main').classList.add('active');
+  document.getElementById('page-report').classList.remove('active');
+
+  document.getElementById('hp-kpis').innerHTML = `
+    <div class="kpi"><div class="kpi-label">총 세션</div><div class="kpi-value">${n(d.hp.sessions)}</div></div>
+    <div class="kpi"><div class="kpi-label">활성 사용자</div><div class="kpi-value">${n(d.hp.active)}</div></div>
+    <div class="kpi"><div class="kpi-label">평균 사용시간</div><div class="kpi-value">${d.hp.time}</div></div>
+    <div class="kpi"><div class="kpi-label">회원가입</div><div class="kpi-value">${d.hp.signup}<span style="font-size:13px;color:var(--text-muted)">건</span></div></div>
+    <div class="kpi"><div class="kpi-label">캐릭터 문의</div><div class="kpi-value">${d.hp.inquiry}<span style="font-size:13px;color:var(--text-muted)">건</span></div></div>
+    <div class="kpi"><div class="kpi-label">캐릭터 등록</div><div class="kpi-value">${d.hp.register}<span style="font-size:13px;color:var(--text-muted)">건</span></div></div>
+  `;
+
+  const maxSess = Math.max(...d.utm.map(u=>u.sess));
+  document.getElementById('utm-rows').innerHTML = d.utm.map(u=>`
+    <div class="utm-row">
+      <div class="utm-src">${u.src}</div>
+      <div class="utm-bar-wrap"><div class="utm-bar-fill" style="width:${Math.round(u.sess/maxSess*100)}%"></div></div>
+      <div class="utm-sess">${n(u.sess)}세션</div>
+      <div class="utm-pct">${u.pct}%</div>
+    </div>`).join('');
+
+  document.getElementById('blog-top10').innerHTML = BLOG_ALL.slice(0,10).map(blogRow).join('');
+  document.getElementById('blog-rest').innerHTML = BLOG_ALL.slice(10).map(blogRow).join('');
+
+  document.getElementById('ig-kpis').innerHTML = `
+    <div class="kpi"><div class="kpi-label">팔로워</div><div class="kpi-value">${n(d.ig.followers)}</div><div class="kpi-sub up">${d.ig.delta}</div></div>
+    <div class="kpi"><div class="kpi-label">도달수</div><div class="kpi-value">${n(d.ig.reach)}</div></div>
+    <div class="kpi"><div class="kpi-label">참여율</div><div class="kpi-value">${d.ig.engage}</div></div>
+    <div class="kpi"><div class="kpi-label">공유수 (리포스트·DM)</div><div class="kpi-value">${n(d.ig.shares)}</div></div>
+  `;
+
+  const lbl = {daily:'오늘',weekly:'이번 주',monthly:'이번 달'}[mode];
+  document.getElementById('top5-title').textContent = `${lbl} 성과 TOP 5`;
+  document.getElementById('top5-posts').innerHTML = d.top5.map((p,i)=>`
+    <div class="top5-card">
+      <div class="top5-rank">${i+1}</div>
+      <div>
+        <div style="font-size:10px;color:var(--text-muted);margin-bottom:3px">${p.emoji} ${p.type}</div>
+        <div class="top5-title">${p.title}</div>
+        <div class="top5-metrics">
+          <span class="top5-metric">도달 ${n(p.reach)}</span>
+          <span class="top5-metric">· 참여 ${n(p.engage)}</span>
+          <span class="top5-metric">· 공유 ${p.shares}</span>
+          <span class="top5-metric up">· 팔로우 +${p.follow}</span>
+        </div>
+      </div>
+    </div>`).join('');
+
+  document.getElementById('ig-period-title').textContent = `${lbl} 업로드된 콘텐츠`;
+  document.getElementById('ig-posts').innerHTML = d.igPosts.map(p=>`
+    <div class="ig-post">
+      <div class="ig-emoji">${p.emoji}</div>
+      <div class="ig-type-label">${p.type} · ${p.period}</div>
+      <div class="ig-title">${p.title}</div>
+      <div class="ig-stat">도달 ${n(p.reach)}</div>
+      <div class="ig-stat">좋아요 ${p.likes}</div>
+      <div class="ig-stat">공유 ${p.shares}</div>
+      <div class="ig-stat">참여율 ${p.engage}</div>
+    </div>`).join('');
+
+  destroyAll();
+
+  charts['active'] = new Chart(document.getElementById('c-active'),{
+    type:'line', data:{labels:d.activeTrend.labels,datasets:[{data:d.activeTrend.data,borderColor:C.blue,backgroundColor:'rgba(42,120,214,0.08)',borderWidth:2,pointRadius:3,pointBackgroundColor:C.blue,fill:true,tension:0.3}]},
+    options:baseOpts()
+  });
+  charts['conv'] = new Chart(document.getElementById('c-conv'),{
+    type:'bar', data:{labels:d.conv.labels,datasets:[{data:d.conv.data,backgroundColor:[C.blue,C.aqua,C.amber],borderRadius:4,barThickness:28}]},
+    options:baseOpts()
+  });
+  charts['follow'] = new Chart(document.getElementById('c-follow'),{
+    type:'line', data:{labels:d.followTrend.labels,datasets:[{data:d.followTrend.data,borderColor:C.violet,backgroundColor:'rgba(74,58,167,0.07)',borderWidth:2,pointRadius:3,pointBackgroundColor:C.violet,fill:true,tension:0.3}]},
+    options:{...baseOpts(),scales:{x:{grid:{color:'transparent'},ticks:{color:'#898781',font:{size:11}}},y:{grid:{color:'rgba(140,138,130,0.15)'},ticks:{color:'#898781',font:{size:11},callback:v=>v.toLocaleString()}}}}
+  });
+  const ts = d.igTypeSeries;
+  charts['igtype'] = new Chart(document.getElementById('c-ig-type'),{
+    type:'bar',
+    data:{labels:ts.labels,datasets:[
+      {label:'도달',data:ts.reach,backgroundColor:C.blue,borderRadius:3,barThickness:11},
+      {label:'참여',data:ts.engage,backgroundColor:C.aqua,borderRadius:3,barThickness:11},
+      {label:'공유',data:ts.share,backgroundColor:C.amber,borderRadius:3,barThickness:11},
+    ]},
+    options:{...baseOpts(),plugins:{legend:{display:false}}}
+  });
+}
+
+async function renderReport(){
+  document.getElementById('page-main').classList.remove('active');
+  document.getElementById('page-report').classList.add('active');
+  document.getElementById('report-heading').textContent = '6월 콘텐츠 종합 분석';
+  document.getElementById('report-analysis').innerHTML = '<div class="ai-loading">클로드가 6월 데이터를 분석하는 중...</div>';
+  document.getElementById('report-actions').innerHTML = '<div class="ai-loading">7월 액션 아이템 생성 중...</div>';
+
+  const summary = `이너부스 6월 콘텐츠 성과:
+- 홈페이지: 세션 9,840 / 활성사용자 5,820 / 회원가입 89건 / 캐릭터문의 34건 / 캐릭터등록 12건
+- UTM: naver/blog 55%, ilc/magazine 20%, ig/social 14%, ilc/newsletter 9%
+- 블로그 TOP3: 캐릭터IP라이선스(1,842뷰+24%), 팝업스토어트렌드(1,204뷰+18%), 굿즈협업(987뷰+9%)
+- 인스타: 팔로워 8,412(+142), 도달 31,200, 참여율 3.8%, 공유 847
+- 인스타 TOP: 팝업스토어릴스(도달4,820/공유134), 캐릭터등록릴스(도달3,210/공유93)`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:1000,
+        messages:[{role:'user',content:`당신은 콘텐츠 마케팅 분석가입니다. 아래 데이터를 분석해주세요.\n\n${summary}\n\n아래 JSON만 반환 (마크다운 없이):\n{"analysis":["포인트1","포인트2","포인트3","포인트4","포인트5"],"actions":["액션1","액션2","액션3","액션4","액션5"]}`}]})
+    });
+    const data = await res.json();
+    const text = data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
+    const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
+    document.getElementById('report-analysis').innerHTML = parsed.analysis.map(a=>`<div class="report-item">• ${a}</div>`).join('');
+    document.getElementById('report-actions').innerHTML = parsed.actions.map(a=>`<div class="action-item">→ ${a}</div>`).join('');
+  } catch(e) {
+    document.getElementById('report-analysis').innerHTML = [
+      '네이버 블로그(55%)가 주요 유입 채널로, 검색 최적화 콘텐츠 효과가 높음',
+      '릴스 도달수(72,000)가 카드뉴스 대비 1.5배 높아 영상 콘텐츠 효율 우수',
+      '캐릭터 IP 라이선스 관련 키워드가 블로그 유입 1위로 IP 교육 콘텐츠 수요 명확',
+      '회원가입 89건 대비 캐릭터 등록 12건으로 가입 후 등록 전환율 개선 필요',
+      'ig/social 유입(14%)이 newsletter(9%)보다 높아 인스타 바이오링크 활용도 증가'
+    ].map(a=>`<div class="report-item">• ${a}</div>`).join('');
+    document.getElementById('report-actions').innerHTML = [
+      '릴스 제작 빈도를 주 1회 이상으로 늘리고, 팝업스토어·현장 스케치 소재 우선 활용',
+      '회원가입 후 캐릭터 등록 유도 이메일 시퀀스 설계 (D+1, D+3, D+7 타이밍)',
+      '블로그에서 검색 유입이 높은 "IP 계약" 관련 시리즈 콘텐츠 기획 (3편 이상)',
+      'ilc/magazine 유입(20%) 활용한 뉴스레터 CTA 최적화 및 전환 트래킹 강화',
+      '카드뉴스 저장률 높은 포맷(계약·가이드형)에 집중하여 7월 콘텐츠 캘린더 구성'
+    ].map(a=>`<div class="action-item">→ ${a}</div>`).join('');
+  }
+}
+
+function setMode(m, btn){
+  mode = m;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const sel = document.getElementById('period-sel');
+  if(m==='report'){ sel.style.display='none'; }
+  else { sel.style.display=''; sel.innerHTML=(PERIODS[m]||[]).map(s=>`<option>${s}</option>`).join(''); }
+  moreOpen = false;
+  document.getElementById('blog-more').classList.add('hidden');
+  document.getElementById('more-btn').textContent = '+ 더 보기';
+  render();
+}
+
+window.addEventListener('load', ()=>{
+  document.getElementById('period-sel').innerHTML = PERIODS.daily.map(s=>`<option>${s}</option>`).join('');
+  if(sessionStorage.getItem('ib_auth')==='1') render();
+});
+</script>
+</body>
+</html>
